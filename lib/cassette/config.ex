@@ -77,16 +77,12 @@ defmodule Cassette.Config do
     default_values = %Cassette.Config{}
 
     env_or_default = fn key ->
-      case Application.fetch_env(:cassette, key) do
-        {:ok, {:system, var}} ->
-          System.get_env(var) || Map.get(default_values, key)
-
-        {:ok, value} ->
-          value
-
-        :error ->
-          Map.get(default_values, key)
-      end
+      {_key, value} = resolve_env_var(
+        key,
+        Application.fetch_env(:cassette, key),
+        Map.get(default_values, key)
+      )
+      value
     end
 
     default_values
@@ -128,8 +124,12 @@ defmodule Cassette.Config do
   end
 
 
-  defp resolve_env_var(_key, func, _default_value) when is_function(func) do
-    func.()
+  defp resolve_env_var(key, func, _default_value) when is_function(func) do
+    {key, func.()}
+  end
+
+  defp resolve_env_var(key, :error, default_value) do
+    {key, default_value}
   end
 
   defp resolve_env_var(key, value, _default_value) do
